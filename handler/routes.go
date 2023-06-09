@@ -754,6 +754,117 @@ func GlobalSettings(db store.IStore) echo.HandlerFunc {
 	}
 }
 
+func Status2(db store.IStore) echo.HandlerFunc {
+	type PeerVM struct {
+		Name              string
+		Email             string
+		PublicKey         string
+		ReceivedBytes     int64
+		TransmitBytes     int64
+		LastHandshakeTime time.Time
+		LastHandshakeRel  time.Duration
+		Connected         bool
+		AllocatedIP       string
+		Endpoint          string
+	}
+
+	type DeviceVM struct {
+		Name  string
+		Peers []PeerVM
+	}
+
+	type RequestBody struct {
+		JsonRPC string                 `json:"jsonrpc"`
+		Method  string                 `json:"method"`
+		Params  map[string]interface{} `json:"params"`
+	}
+
+	return func(c echo.Context) error {
+
+		globalSettings, err := db.GetGlobalSettings()
+		if err == nil && globalSettings.RemoteAPI != "" {
+			fmt.Println(globalSettings.RemoteAPI)
+		}
+
+		//wgClient, err := wgctrl.New()
+		//if err != nil {
+		//	return c.Render(http.StatusInternalServerError, "status.html", map[string]interface{}{
+		//		"baseData": model.BaseData{Active: "status", CurrentUser: currentUser(c), Admin: isAdmin(c)},
+		//		"error":    err.Error(),
+		//		"devices":  nil,
+		//	})
+		//}
+
+		//devices, err := wgClient.Devices()
+		//
+		//if err != nil {
+		//	return c.Render(http.StatusInternalServerError, "status.html", map[string]interface{}{
+		//		"baseData": model.BaseData{Active: "status", CurrentUser: currentUser(c), Admin: isAdmin(c)},
+		//		"error":    err.Error(),
+		//		"devices":  nil,
+		//	})
+		//}
+
+		//devicesVm := make([]DeviceVM, 0, len(devices))
+
+		//if len(devices) > 0 {
+		//	m := make(map[string]*model.Client)
+		//	clients, err := db.GetClients(false)
+		//	if err != nil {
+		//		return c.Render(http.StatusInternalServerError, "status.html", map[string]interface{}{
+		//			"baseData": model.BaseData{Active: "status", CurrentUser: currentUser(c), Admin: isAdmin(c)},
+		//			"error":    err.Error(),
+		//			"devices":  nil,
+		//		})
+		//	}
+		//	for i := range clients {
+		//		if clients[i].Client != nil {
+		//			m[clients[i].Client.PublicKey] = clients[i].Client
+		//		}
+		//	}
+
+		//conv := map[bool]int{true: 1, false: 0}
+		//for i := range devices {
+		//	devVm := DeviceVM{Name: devices[i].Name}
+		//	for j := range devices[i].Peers {
+		//		var allocatedIPs string
+		//		for _, ip := range devices[i].Peers[j].AllowedIPs {
+		//			if len(allocatedIPs) > 0 {
+		//				allocatedIPs += "</br>"
+		//			}
+		//			allocatedIPs += ip.String()
+		//		}
+		//		pVm := PeerVM{
+		//			PublicKey:         devices[i].Peers[j].PublicKey.String(),
+		//			ReceivedBytes:     devices[i].Peers[j].ReceiveBytes,
+		//			TransmitBytes:     devices[i].Peers[j].TransmitBytes,
+		//			LastHandshakeTime: devices[i].Peers[j].LastHandshakeTime,
+		//			LastHandshakeRel:  time.Since(devices[i].Peers[j].LastHandshakeTime),
+		//			AllocatedIP:       allocatedIPs,
+		//			Endpoint:          devices[i].Peers[j].Endpoint.String(),
+		//		}
+		//		pVm.Connected = pVm.LastHandshakeRel.Minutes() < 3.
+		//
+		//		if _client, ok := m[pVm.PublicKey]; ok {
+		//			pVm.Name = _client.Name
+		//			pVm.Email = _client.Email
+		//		}
+		//		devVm.Peers = append(devVm.Peers, pVm)
+		//	}
+		//	sort.SliceStable(devVm.Peers, func(i, j int) bool { return devVm.Peers[i].Name < devVm.Peers[j].Name })
+		//	sort.SliceStable(devVm.Peers, func(i, j int) bool { return conv[devVm.Peers[i].Connected] > conv[devVm.Peers[j].Connected] })
+		//	devicesVm = append(devicesVm, devVm)
+		//}
+		//}
+
+		return c.Render(http.StatusOK, "status.html", map[string]interface{}{
+			"baseData": model.BaseData{Active: "status", CurrentUser: currentUser(c), Admin: isAdmin(c)},
+			//"devices":  devicesVm,
+			"error": "",
+		})
+	}
+}
+
 // Status handler
 func Status(db store.IStore) echo.HandlerFunc {
 	type PeerVM struct {
@@ -774,6 +885,11 @@ func Status(db store.IStore) echo.HandlerFunc {
 		Peers []PeerVM
 	}
 	return func(c echo.Context) error {
+
+		globalSettings, err := db.GetGlobalSettings()
+		if err == nil && globalSettings.RemoteAPI != "" {
+			fmt.Println(globalSettings.RemoteAPI)
+		}
 
 		wgClient, err := wgctrl.New()
 		if err != nil {
@@ -860,7 +976,6 @@ func GlobalSettingSubmit(db store.IStore) echo.HandlerFunc {
 
 		var globalSettings model.GlobalSetting
 		c.Bind(&globalSettings)
-
 		// validate the input dns server list
 		if util.ValidateIPAddressList(globalSettings.DNSServers) == false {
 			log.Warnf("Invalid DNS server list input from user: %v", globalSettings.DNSServers)
