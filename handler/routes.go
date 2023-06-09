@@ -358,9 +358,9 @@ func GetClient(db store.IStore) echo.HandlerFunc {
 
 		clientID := c.Param("id")
 		qrCodeSettings := model.QRCodeSettings{
-			Enabled:       true,
-			IncludeDNS:    true,
-			IncludeMTU:    true,
+			Enabled:    true,
+			IncludeDNS: true,
+			IncludeMTU: true,
 		}
 
 		clientData, err := db.GetClientByID(clientID, qrCodeSettings)
@@ -486,9 +486,9 @@ func EmailClient(db store.IStore, mailer emailer.Emailer, emailSubject, emailCon
 		// TODO validate email
 
 		qrCodeSettings := model.QRCodeSettings{
-			Enabled:       true,
-			IncludeDNS:    true,
-			IncludeMTU:    true,
+			Enabled:    true,
+			IncludeDNS: true,
+			IncludeMTU: true,
 		}
 		clientData, err := db.GetClientByID(payload.ID, qrCodeSettings)
 		if err != nil {
@@ -786,6 +786,7 @@ func Status(db store.IStore) echo.HandlerFunc {
 		}
 
 		devices, err := wgClient.Devices()
+		fmt.Println(devices)
 		if err != nil {
 			return c.Render(http.StatusInternalServerError, "status.html", map[string]interface{}{
 				"baseData": model.BaseData{Active: "status", CurrentUser: currentUser(c), Admin: isAdmin(c)},
@@ -795,6 +796,8 @@ func Status(db store.IStore) echo.HandlerFunc {
 		}
 
 		devicesVm := make([]DeviceVM, 0, len(devices))
+		fmt.Println(devicesVm)
+
 		if len(devices) > 0 {
 			m := make(map[string]*model.Client)
 			clients, err := db.GetClients(false)
@@ -992,7 +995,6 @@ func ApplyServerConfig(db store.IStore, tmplDir fs.FS) echo.HandlerFunc {
 		return c.JSON(http.StatusOK, jsonHTTPResponse{true, "Applied server config successfully"})
 	}
 }
-
 
 // GetHashesChanges handler returns if database hashes have changed
 func GetHashesChanges(db store.IStore) echo.HandlerFunc {

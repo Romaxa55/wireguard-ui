@@ -27,7 +27,7 @@ var (
 	buildTime  = fmt.Sprintf(time.Now().UTC().Format("01-02-2006 15:04:05"))
 	// configuration variables
 	flagDisableLogin   bool   = false
-	flagBindAddress    string = "0.0.0.0:5000"
+	flagBindAddress    string = "0.0.0.0:5001"
 	flagSmtpHostname   string = "127.0.0.1"
 	flagSmtpPort       int    = 25
 	flagSmtpUsername   string
