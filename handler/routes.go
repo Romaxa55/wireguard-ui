@@ -5,14 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/fs"
-	"net/http"
-	"os"
-	"reflect"
-	"sort"
-	"strings"
-	"time"
-
 	"github.com/gorilla/sessions"
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
@@ -20,6 +12,12 @@ import (
 	"github.com/rs/xid"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
+	"io/fs"
+	"net/http"
+	"os"
+	"sort"
+	"strings"
+	"time"
 
 	"github.com/ngoduykhanh/wireguard-ui/emailer"
 	"github.com/ngoduykhanh/wireguard-ui/model"
@@ -787,15 +785,6 @@ func Status(db store.IStore) echo.HandlerFunc {
 		}
 
 		devices, err := wgClient.Devices()
-		v := reflect.ValueOf(devices)
-		t := v.Type()
-		for i := 0; i < v.NumField(); i++ {
-			field := v.Field(i)
-			fieldName := t.Field(i).Name
-			fieldType := t.Field(i).Type
-
-			fmt.Printf("%s (%s): %v\n", fieldName, fieldType, field.Interface())
-		}
 
 		if err != nil {
 			return c.Render(http.StatusInternalServerError, "status.html", map[string]interface{}{
@@ -806,11 +795,6 @@ func Status(db store.IStore) echo.HandlerFunc {
 		}
 
 		devicesVm := make([]DeviceVM, 0, len(devices))
-		if len(devicesVm) > 0 {
-			fmt.Printf("%T\n", devicesVm[0])
-		} else {
-			fmt.Println("Slice is empty")
-		}
 
 		if len(devices) > 0 {
 			m := make(map[string]*model.Client)

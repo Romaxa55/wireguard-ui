@@ -104,10 +104,11 @@ func (o *JsonDB) Init() error {
 		globalSetting.FirewallMark = util.LookupEnvOrString(util.FirewallMarkEnvVar, util.DefaultFirewallMark)
 		globalSetting.Table = util.LookupEnvOrString(util.TableEnvVar, util.DefaultTable)
 		globalSetting.ConfigFilePath = util.LookupEnvOrString(util.ConfigFilePathEnvVar, util.DefaultConfigFilePath)
+		globalSetting.RemoteAPI = util.LookupEnvOrString(util.ConfigRemoteAPIEnvVar, util.DefaultRemoteAPI)
 		globalSetting.UpdatedAt = time.Now().UTC()
 		o.conn.Write("server", "global_settings", globalSetting)
 	}
-	
+
 	// hashes
 	if _, err := os.Stat(hashesPath); os.IsNotExist(err) {
 		clientServerHashes := new(model.ClientServerHashes)
@@ -302,6 +303,10 @@ func (o *JsonDB) SaveServerKeyPair(serverKeyPair model.ServerKeypair) error {
 
 func (o *JsonDB) SaveGlobalSettings(globalSettings model.GlobalSetting) error {
 	return o.conn.Write("server", "global_settings", globalSettings)
+}
+
+func (o *JsonDB) GetRemoteApi() string {
+	return o.dbPath
 }
 
 func (o *JsonDB) GetPath() string {
