@@ -786,7 +786,11 @@ func Status(db store.IStore) echo.HandlerFunc {
 		}
 
 		devices, err := wgClient.Devices()
-		fmt.Println(devices)
+		if len(devices) > 0 {
+			fmt.Printf("%T\n", devices[0])
+		} else {
+			fmt.Println("Slice is empty")
+		}
 		if err != nil {
 			return c.Render(http.StatusInternalServerError, "status.html", map[string]interface{}{
 				"baseData": model.BaseData{Active: "status", CurrentUser: currentUser(c), Admin: isAdmin(c)},
@@ -796,7 +800,11 @@ func Status(db store.IStore) echo.HandlerFunc {
 		}
 
 		devicesVm := make([]DeviceVM, 0, len(devices))
-		fmt.Println(devicesVm)
+		if len(devicesVm) > 0 {
+			fmt.Printf("%T\n", devicesVm[0])
+		} else {
+			fmt.Println("Slice is empty")
+		}
 
 		if len(devices) > 0 {
 			m := make(map[string]*model.Client)
