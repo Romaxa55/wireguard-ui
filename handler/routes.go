@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
+	"reflect"
 	"sort"
 	"strings"
 	"time"
@@ -786,11 +787,16 @@ func Status(db store.IStore) echo.HandlerFunc {
 		}
 
 		devices, err := wgClient.Devices()
-		if len(devices) > 0 {
-			fmt.Printf("%T\n", devices[0])
-		} else {
-			fmt.Println("Slice is empty")
+		v := reflect.ValueOf(devices)
+		t := v.Type()
+		for i := 0; i < v.NumField(); i++ {
+			field := v.Field(i)
+			fieldName := t.Field(i).Name
+			fieldType := t.Field(i).Type
+
+			fmt.Printf("%s (%s): %v\n", fieldName, fieldType, field.Interface())
 		}
+
 		if err != nil {
 			return c.Render(http.StatusInternalServerError, "status.html", map[string]interface{}{
 				"baseData": model.BaseData{Active: "status", CurrentUser: currentUser(c), Admin: isAdmin(c)},
