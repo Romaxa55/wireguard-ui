@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
@@ -12,6 +13,7 @@ import (
 	"github.com/rs/xid"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
+	"io"
 	"io/fs"
 	"net/http"
 	"os"
@@ -755,6 +757,12 @@ func GlobalSettings(db store.IStore) echo.HandlerFunc {
 }
 
 func Status2(db store.IStore) echo.HandlerFunc {
+	type RequestBody struct {
+		JsonRPC string                 `json:"jsonrpc"`
+		Method  string                 `json:"method"`
+		Params  map[string]interface{} `json:"params"`
+	}
+
 	type PeerVM struct {
 		Name              string
 		Email             string
@@ -773,94 +781,111 @@ func Status2(db store.IStore) echo.HandlerFunc {
 		Peers []PeerVM
 	}
 
-	type RequestBody struct {
-		JsonRPC string                 `json:"jsonrpc"`
-		Method  string                 `json:"method"`
-		Params  map[string]interface{} `json:"params"`
+	type ResponseBody struct {
+		Jsonrpc string   `json:"jsonrpc"`
+		Result  DeviceVM `json:"result"`
+		Id      string   `json:"id"`
 	}
 
 	return func(c echo.Context) error {
-
 		globalSettings, err := db.GetGlobalSettings()
-		if err == nil && globalSettings.RemoteAPI != "" {
-			fmt.Println(globalSettings.RemoteAPI)
+		if err != nil {
+			return c.Render(http.StatusInternalServerError, "status.html", map[string]interface{}{
+				"baseData": model.BaseData{Active: "status", CurrentUser: currentUser(c), Admin: isAdmin(c)},
+				"error":    err.Error(),
+				"devices":  nil,
+			})
 		}
 
-		//wgClient, err := wgctrl.New()
-		//if err != nil {
-		//	return c.Render(http.StatusInternalServerError, "status.html", map[string]interface{}{
-		//		"baseData": model.BaseData{Active: "status", CurrentUser: currentUser(c), Admin: isAdmin(c)},
-		//		"error":    err.Error(),
-		//		"devices":  nil,
-		//	})
-		//}
+		// Создаем запрос
+		reqBody := &RequestBody{
+			JsonRPC: "2.0",
+			Method:  "ListPeers",
+			Params:  map[string]interface{}{},
+		}
 
-		//devices, err := wgClient.Devices()
-		//
-		//if err != nil {
-		//	return c.Render(http.StatusInternalServerError, "status.html", map[string]interface{}{
-		//		"baseData": model.BaseData{Active: "status", CurrentUser: currentUser(c), Admin: isAdmin(c)},
-		//		"error":    err.Error(),
-		//		"devices":  nil,
-		//	})
-		//}
+		reqBytes, err := json.Marshal(reqBody)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, err)
+		}
 
-		//devicesVm := make([]DeviceVM, 0, len(devices))
+		req, err := http.NewRequest("POST", globalSettings.RemoteAPI, bytes.NewBuffer(reqBytes))
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, err)
+		}
+		req.Header.Set("Content-Type", "application/json")
 
-		//if len(devices) > 0 {
-		//	m := make(map[string]*model.Client)
-		//	clients, err := db.GetClients(false)
-		//	if err != nil {
-		//		return c.Render(http.StatusInternalServerError, "status.html", map[string]interface{}{
-		//			"baseData": model.BaseData{Active: "status", CurrentUser: currentUser(c), Admin: isAdmin(c)},
-		//			"error":    err.Error(),
-		//			"devices":  nil,
-		//		})
-		//	}
-		//	for i := range clients {
-		//		if clients[i].Client != nil {
-		//			m[clients[i].Client.PublicKey] = clients[i].Client
-		//		}
-		//	}
+		// Отправляем запрос и получаем ответ
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, err)
+		}
+		defer func(Body io.ReadCloser) {
+			err := Body.Close()
+			if err != nil {
+				log.Printf("Error when closing the body: %v", err)
+			}
+		}(resp.Body)
 
-		//conv := map[bool]int{true: 1, false: 0}
-		//for i := range devices {
-		//	devVm := DeviceVM{Name: devices[i].Name}
-		//	for j := range devices[i].Peers {
-		//		var allocatedIPs string
-		//		for _, ip := range devices[i].Peers[j].AllowedIPs {
-		//			if len(allocatedIPs) > 0 {
-		//				allocatedIPs += "</br>"
-		//			}
-		//			allocatedIPs += ip.String()
-		//		}
-		//		pVm := PeerVM{
-		//			PublicKey:         devices[i].Peers[j].PublicKey.String(),
-		//			ReceivedBytes:     devices[i].Peers[j].ReceiveBytes,
-		//			TransmitBytes:     devices[i].Peers[j].TransmitBytes,
-		//			LastHandshakeTime: devices[i].Peers[j].LastHandshakeTime,
-		//			LastHandshakeRel:  time.Since(devices[i].Peers[j].LastHandshakeTime),
-		//			AllocatedIP:       allocatedIPs,
-		//			Endpoint:          devices[i].Peers[j].Endpoint.String(),
-		//		}
-		//		pVm.Connected = pVm.LastHandshakeRel.Minutes() < 3.
-		//
-		//		if _client, ok := m[pVm.PublicKey]; ok {
-		//			pVm.Name = _client.Name
-		//			pVm.Email = _client.Email
-		//		}
-		//		devVm.Peers = append(devVm.Peers, pVm)
-		//	}
-		//	sort.SliceStable(devVm.Peers, func(i, j int) bool { return devVm.Peers[i].Name < devVm.Peers[j].Name })
-		//	sort.SliceStable(devVm.Peers, func(i, j int) bool { return conv[devVm.Peers[i].Connected] > conv[devVm.Peers[j].Connected] })
-		//	devicesVm = append(devicesVm, devVm)
-		//}
-		//}
+		// Преобразовываем ответ в JSON
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, err)
+		}
+
+		var response ResponseBody
+		err = json.Unmarshal(body, &response)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, err)
+		}
+
+		devices := response.Result.Peers
+		devicesVm := make([]DeviceVM, 0, len(devices))
+
+		if len(devices) > 0 {
+			m := make(map[string]*model.Client)
+			clients, err := db.GetClients(false)
+			if err != nil {
+				return c.Render(http.StatusInternalServerError, "status.html", map[string]interface{}{
+					"baseData": model.BaseData{Active: "status", CurrentUser: currentUser(c), Admin: isAdmin(c)},
+					"error":    err.Error(),
+					"devices":  nil,
+				})
+			}
+			for i := range clients {
+				if clients[i].Client != nil {
+					m[clients[i].Client.PublicKey] = clients[i].Client
+				}
+			}
+			// Преобразуем ответ в структуру DeviceVM
+			deviceVm := DeviceVM{
+				Name:  "default", // здесь можно использовать реальное имя устройства, если оно доступно
+				Peers: make([]PeerVM, 0),
+			}
+
+			for _, peer := range response.Result.Peers {
+				deviceVm.Peers = append(deviceVm.Peers, PeerVM{
+					Name:              "",
+					Email:             "",
+					PublicKey:         peer.PublicKey,
+					ReceivedBytes:     peer.ReceivedBytes,
+					TransmitBytes:     peer.TransmitBytes,
+					LastHandshakeTime: time.Time{},
+					LastHandshakeRel:  0,
+					Connected:         false,
+					Endpoint:          peer.Endpoint,
+				})
+			}
+
+			devicesVm = append(devicesVm, deviceVm)
+		}
+		// Теперь у вас есть информация об устройствах и узлах, и вы можете ее использовать
 
 		return c.Render(http.StatusOK, "status.html", map[string]interface{}{
 			"baseData": model.BaseData{Active: "status", CurrentUser: currentUser(c), Admin: isAdmin(c)},
-			//"devices":  devicesVm,
-			"error": "",
+			"devices":  devicesVm,
+			"error":    "",
 		})
 	}
 }
