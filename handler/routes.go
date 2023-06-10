@@ -795,7 +795,6 @@ func Status2(db store.IStore) echo.HandlerFunc {
 			})
 		}
 		devicesVm := make([]DeviceVM, 0)
-		fmt.Println(devicesVm)
 		if len(devices) > 0 {
 			m := make(map[string]*model.Client)
 			clients, err := db.GetClients(false)
