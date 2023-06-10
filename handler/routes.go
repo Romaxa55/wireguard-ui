@@ -757,12 +757,6 @@ func GlobalSettings(db store.IStore) echo.HandlerFunc {
 }
 
 func Status2(db store.IStore) echo.HandlerFunc {
-	type RequestBody struct {
-		JsonRPC string                 `json:"jsonrpc"`
-		Method  string                 `json:"method"`
-		Params  map[string]interface{} `json:"params"`
-	}
-
 	type PeerVM struct {
 		Name              string
 		Email             string
@@ -781,14 +775,18 @@ func Status2(db store.IStore) echo.HandlerFunc {
 		Peers []PeerVM
 	}
 
-	type ResponseBody struct {
-		Jsonrpc string   `json:"jsonrpc"`
-		Result  DeviceVM `json:"result"`
-		Id      string   `json:"id"`
-	}
-
 	return func(c echo.Context) error {
 		globalSettings, err := db.GetGlobalSettings()
+		// Если при получении настроек произошла ошибка, возвращаем ошибку.
+		if err != nil {
+			return err
+		}
+		// Если RemoteAPI не определен в глобальных настройках, возвращаем ошибку.
+		if globalSettings.RemoteAPI == "" {
+			return echo.NewHTTPError(http.StatusInternalServerError, "Remote API is not defined in the global settings.")
+		}
+		// Отправляем JSON-RPC запрос и получаем ответ.
+		devices, err := SendJSONRPCRequest(globalSettings)
 		if err != nil {
 			return c.Render(http.StatusInternalServerError, "status.html", map[string]interface{}{
 				"baseData": model.BaseData{Active: "status", CurrentUser: currentUser(c), Admin: isAdmin(c)},
@@ -796,53 +794,8 @@ func Status2(db store.IStore) echo.HandlerFunc {
 				"devices":  nil,
 			})
 		}
-
-		// Создаем запрос
-		reqBody := &RequestBody{
-			JsonRPC: "2.0",
-			Method:  "ListPeers",
-			Params:  map[string]interface{}{},
-		}
-
-		reqBytes, err := json.Marshal(reqBody)
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, err)
-		}
-
-		req, err := http.NewRequest("POST", globalSettings.RemoteAPI, bytes.NewBuffer(reqBytes))
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, err)
-		}
-		req.Header.Set("Content-Type", "application/json")
-
-		// Отправляем запрос и получаем ответ
-		client := &http.Client{}
-		resp, err := client.Do(req)
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, err)
-		}
-		defer func(Body io.ReadCloser) {
-			err := Body.Close()
-			if err != nil {
-				log.Printf("Error when closing the body: %v", err)
-			}
-		}(resp.Body)
-
-		// Преобразовываем ответ в JSON
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, err)
-		}
-
-		var response ResponseBody
-		err = json.Unmarshal(body, &response)
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, err)
-		}
-
-		devices := response.Result.Peers
-		devicesVm := make([]DeviceVM, 0, len(devices))
-
+		devicesVm := make([]DeviceVM, 0)
+		fmt.Println(devicesVm)
 		if len(devices) > 0 {
 			m := make(map[string]*model.Client)
 			clients, err := db.GetClients(false)
@@ -858,36 +811,113 @@ func Status2(db store.IStore) echo.HandlerFunc {
 					m[clients[i].Client.PublicKey] = clients[i].Client
 				}
 			}
-			// Преобразуем ответ в структуру DeviceVM
-			deviceVm := DeviceVM{
-				Name:  "default", // здесь можно использовать реальное имя устройства, если оно доступно
-				Peers: make([]PeerVM, 0),
-			}
 
-			for _, peer := range response.Result.Peers {
-				deviceVm.Peers = append(deviceVm.Peers, PeerVM{
-					Name:              "",
-					Email:             "",
-					PublicKey:         peer.PublicKey,
-					ReceivedBytes:     peer.ReceivedBytes,
-					TransmitBytes:     peer.TransmitBytes,
-					LastHandshakeTime: time.Time{},
-					LastHandshakeRel:  0,
-					Connected:         false,
-					Endpoint:          peer.Endpoint,
-				})
-			}
+			devVm := DeviceVM{Name: globalSettings.RemoteAPI}
+			conv := map[bool]int{true: 1, false: 0}
+			for i := range devices {
+				var allocatedIPs string
+				for _, ip := range devices[i].AllowedIPs {
+					if len(allocatedIPs) > 0 {
+						allocatedIPs += "</br>"
+					}
+					allocatedIPs += ip
+				}
 
-			devicesVm = append(devicesVm, deviceVm)
+				pVm := PeerVM{
+					PublicKey:         devices[i].PublicKey,
+					ReceivedBytes:     devices[i].ReceiveBytes,
+					TransmitBytes:     devices[i].TransmitBytes,
+					LastHandshakeTime: devices[i].LastHandshake,
+					LastHandshakeRel:  time.Since(devices[i].LastHandshake),
+					AllocatedIP:       allocatedIPs,
+					Endpoint:          devices[i].Endpoint,
+				}
+				pVm.Connected = pVm.LastHandshakeRel.Minutes() < 3.
+
+				if _client, ok := m[pVm.PublicKey]; ok {
+					pVm.Name = _client.Name
+					pVm.Email = _client.Email
+				} else {
+					pVm.Name = "Unknown"
+					pVm.Email = "Unknown"
+				}
+				devVm.Peers = append(devVm.Peers, pVm)
+			}
+			sort.SliceStable(devVm.Peers, func(i, j int) bool { return devVm.Peers[i].Name < devVm.Peers[j].Name })
+			sort.SliceStable(devVm.Peers, func(i, j int) bool { return conv[devVm.Peers[i].Connected] > conv[devVm.Peers[j].Connected] })
+			devicesVm = append(devicesVm, devVm)
 		}
-		// Теперь у вас есть информация об устройствах и узлах, и вы можете ее использовать
 
+		// Рендерим страницу с полученными данными.
 		return c.Render(http.StatusOK, "status.html", map[string]interface{}{
 			"baseData": model.BaseData{Active: "status", CurrentUser: currentUser(c), Admin: isAdmin(c)},
 			"devices":  devicesVm,
 			"error":    "",
 		})
 	}
+}
+
+func SendJSONRPCRequest(settings model.GlobalSetting) ([]model.Peer, error) {
+	type JSONRPCRequest struct {
+		Jsonrpc string      `json:"jsonrpc"`
+		Method  string      `json:"method"`
+		Params  interface{} `json:"params"`
+		ID      int         `json:"id"`
+	}
+
+	request := JSONRPCRequest{
+		Jsonrpc: "2.0",
+		Method:  "ListPeers",
+		Params:  struct{}{},
+		ID:      1,
+	}
+
+	type Result struct {
+		Peers []model.Peer `json:"peers"`
+	}
+
+	type APIResponse struct {
+		Jsonrpc string `json:"jsonrpc"`
+		Result  Result `json:"result"`
+	}
+
+	// Преобразуем запрос в JSON.
+	requestData, err := json.Marshal(request)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := http.Post(settings.RemoteAPI, "application/json", bytes.NewBuffer(requestData))
+	if err != nil {
+		return nil, err
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Error("Error closing response body:", err)
+		}
+	}(resp.Body)
+
+	// Читаем ответ.
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	// Преобразуем ответ из JSON в структуру APIResponse.
+	var apiResponse APIResponse
+	err = json.Unmarshal(body, &apiResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	// Создаем срез пиров и заполняем его значениями из apiResponse.
+	peers := make([]model.Peer, len(apiResponse.Result.Peers))
+	for i, p := range apiResponse.Result.Peers {
+		peers[i] = p
+	}
+
+	// Возвращаем только список пиров.
+	return peers, nil
 }
 
 // Status handler
