@@ -20,8 +20,9 @@ import (
 )
 
 type JsonDB struct {
-	conn   *scribble.Driver
-	dbPath string
+	conn            *scribble.Driver
+	dbPath          string
+	notifiedClients map[string]time.Time
 }
 
 // New returns a new pointer JsonDB
@@ -331,10 +332,17 @@ func (o *JsonDB) SaveHashes(hashes model.ClientServerHashes) error {
 }
 
 func (o *JsonDB) StartScheduler() {
+	cronTime := util.LookupEnvOrString(util.CronEnvVar, "*/30 * * * * *")
+	// Global map to keep track of notified clients
+	o.notifiedClients = make(map[string]time.Time)
+
 	c := cron.New(cron.WithSeconds())
-	c.AddFunc("0 */5 * * * *", func() {
+	_, err := c.AddFunc(cronTime, func() {
 		o.checkPaymentsAndUpdateWireguard()
 	})
+	if err != nil {
+		log.Fatalf("Invalid cron time: %v", err)
+	}
 	c.Start()
 }
 
@@ -342,6 +350,7 @@ func (o *JsonDB) checkPaymentsAndUpdateWireguard() {
 	fmt.Println("Checking payments at", time.Now())
 
 	clients, err := o.GetClients(false) // false, если вам не нужны QR-коды
+
 	if err != nil {
 		fmt.Println("Error getting clients:", err)
 		return
@@ -349,9 +358,8 @@ func (o *JsonDB) checkPaymentsAndUpdateWireguard() {
 
 	for _, clientData := range clients {
 		client := clientData.Client
-
 		if !client.Enabled {
-			continue // Пропускаем отключенных клиентов
+			continue
 		}
 
 		paymentDate := client.PaymentDate
@@ -367,20 +375,33 @@ func (o *JsonDB) checkPaymentsAndUpdateWireguard() {
 			// Дата платежа еще не наступила
 			fmt.Println("Payment for client", client.Name, "is GOOD ", days, "days")
 		case days > 0:
-			// Осталось менее 3 дней до платежа
-			logMessage := fmt.Sprintf("Payment for client %s is due soon %d days", client.Name, days)
-			messageText := fmt.Sprintf("⚠️ *Клиент*: `%s`*\nОсталось: ⏳ `%d Дня(ей)`*\nПожалуйста, обновите аккаунт! 💼🔐", client.Name, days)
-			logAndNotify(o, messageText, logMessage)
+			now := time.Now()
+			if now.Hour() == 10 && (now.Minute() >= 0 && now.Minute() <= 30) { // Если текущее время между 10:00 и 10:30
+				if lastNotification, ok := o.notifiedClients[client.Name]; !ok || lastNotification.Day() != now.Day() { // Если уведомление еще не отправлено или было отправлено в другой день
+					// Осталось менее 3 дней до платежа
+					logMessage := fmt.Sprintf("Payment for client %s is due soon %d days", client.Name, days)
+					messageText := fmt.Sprintf("⚠️ *Клиент*: `%s`*\nОсталось: ⏳ `%d Дня(ей)`*\nПожалуйста, обновите аккаунт! 💼🔐", client.Name, days)
+					// Отправляем уведомление
+					logAndNotify(o, messageText, logMessage)
+					// Обновляем время последнего уведомления
+					o.notifiedClients[client.Name] = now
+				}
+			}
 			// Здесь вы можете добавить логику для отправки сообщения в Telegram
 		default:
-			// Платеж просрочен
-			client.Enabled = false
-			// write client to the database
-			err := o.SaveClient(*client)
+			// The payment is overdue
+			err := o.blockClient(client)
 			if err != nil {
 				log.Println("Error saving client:", err)
 				return
 			}
+
+			err = o.updateServerConfig()
+			if err != nil {
+				log.Println(err)
+				return
+			}
+
 			logMessage := fmt.Sprintf("Payment for client %s is overdue %d days", client.Name, days)
 			messageText := fmt.Sprintf("❗️ *Клиент*: `%s`\n⛔️ *Заблокирован из-за неуплаты!* \nПожалуйста, обновите аккаунт! 💼🔐", client.Name)
 			logAndNotify(o, messageText, logMessage)
@@ -417,4 +438,43 @@ func logAndNotify(o *JsonDB, messageText string, logMessage ...interface{}) {
 	if err != nil {
 		log.Println("Ошибка отправки сообщения в Telegram:", err)
 	}
+}
+
+// Block the client and save changes to the database
+func (o *JsonDB) blockClient(client *model.Client) error {
+	client.Enabled = false
+	return o.SaveClient(*client)
+}
+
+// Update the WireGuard server configuration
+func (o *JsonDB) updateServerConfig() error {
+	// Get the current serverConfig, clientDataList, usersList and globalSettings
+	server, err := o.GetServer()
+	if err != nil {
+		return fmt.Errorf("Cannot get server config: %v", err)
+	}
+	clientDataList, err := o.GetClients(true)
+	if err != nil {
+		return fmt.Errorf("Cannot get clients: %v", err)
+	}
+	usersList, err := o.GetUsers()
+	if err != nil {
+		return fmt.Errorf("Cannot get users: %v", err)
+	}
+	globalSettings, err := o.GetGlobalSettings()
+	if err != nil {
+		return fmt.Errorf("Cannot get global settings: %v", err)
+	}
+
+	// Specify the directory with templates
+	tmplDir := "templates"
+	// Create a fs.FS from tmplDir
+	fs := os.DirFS(tmplDir)
+	// Call WriteWireGuardServerConfig to update the configuration
+	err = util.WriteWireGuardServerConfig(fs, server, clientDataList, usersList, globalSettings)
+	if err != nil {
+		return fmt.Errorf("Error writing server config: %v", err)
+	}
+
+	return nil
 }
