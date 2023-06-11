@@ -332,7 +332,7 @@ func (o *JsonDB) SaveHashes(hashes model.ClientServerHashes) error {
 
 func (o *JsonDB) StartScheduler() {
 	c := cron.New(cron.WithSeconds())
-	c.AddFunc("*/10 * * * * *", func() { // Задача будет выполняться каждые 10 секунд
+	c.AddFunc("0 */5 * * * *", func() {
 		o.checkPaymentsAndUpdateWireguard()
 	})
 	c.Start()
