@@ -4,6 +4,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/robfig/cron/v3"
+	"math"
 	"os"
 	"path"
 	"time"
@@ -12,8 +14,8 @@ import (
 	"github.com/skip2/go-qrcode"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 
-	"github.com/ngoduykhanh/wireguard-ui/model"
-	"github.com/ngoduykhanh/wireguard-ui/util"
+	"github.com/romaxa55/wireguard-ui/model"
+	"github.com/romaxa55/wireguard-ui/util"
 )
 
 type JsonDB struct {
@@ -134,6 +136,9 @@ func (o *JsonDB) Init() error {
 		}
 		o.conn.Write("users", user.Username, user)
 	}
+
+	// Запуск планировщика
+	o.StartScheduler()
 
 	return nil
 }
@@ -320,4 +325,52 @@ func (o *JsonDB) GetHashes() (model.ClientServerHashes, error) {
 
 func (o *JsonDB) SaveHashes(hashes model.ClientServerHashes) error {
 	return o.conn.Write("server", "hashes", hashes)
+}
+
+func (o *JsonDB) StartScheduler() {
+	c := cron.New(cron.WithSeconds())
+	c.AddFunc("*/10 * * * * *", func() { // Задача будет выполняться каждые 10 секунд
+		o.checkPaymentsAndUpdateWireguard()
+	})
+	c.Start()
+}
+
+func (o *JsonDB) checkPaymentsAndUpdateWireguard() {
+	fmt.Println("Checking payments at", time.Now())
+
+	clients, err := o.GetClients(false) // false, если вам не нужны QR-коды
+	if err != nil {
+		fmt.Println("Error getting clients:", err)
+		return
+	}
+
+	for _, clientData := range clients {
+		client := clientData.Client
+
+		if !client.Enabled {
+			continue // Пропускаем отключенных клиентов
+		}
+
+		paymentDate := client.PaymentDate
+		if paymentDate.IsZero() {
+			fmt.Println("Payment date not set for client:", client.Name)
+			continue
+		}
+		// Вычисляем количество оставшихся дней до платежа
+		daysUntilPayment := paymentDate.Sub(time.Now()).Hours() / 24
+		days := int(math.Ceil(daysUntilPayment))
+		switch {
+		case days > 3:
+			// Дата платежа еще не наступила
+			fmt.Println("Payment for client", client.Name, "is due on ", days, "days")
+		case days > 0:
+			// Осталось менее 3 дней до платежа
+			fmt.Println("Payment for client", client.Name, "is due soon ", days, "days")
+			// Здесь вы можете добавить логику для отправки сообщения в Telegram
+		default:
+			// Платеж просрочен
+			fmt.Println("Payment for client", client.Name, "is overdue ", days)
+			// Здесь вы можете добавить логику для блокировки пользователя
+		}
+	}
 }

@@ -21,10 +21,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ngoduykhanh/wireguard-ui/emailer"
-	"github.com/ngoduykhanh/wireguard-ui/model"
-	"github.com/ngoduykhanh/wireguard-ui/store"
-	"github.com/ngoduykhanh/wireguard-ui/util"
+	"github.com/romaxa55/wireguard-ui/emailer"
+	"github.com/romaxa55/wireguard-ui/model"
+	"github.com/romaxa55/wireguard-ui/store"
+	"github.com/romaxa55/wireguard-ui/util"
 )
 
 // Health check handler
