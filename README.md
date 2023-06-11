@@ -64,6 +64,8 @@ docker-compose up
 | `SMTP_PASSWORD`             | The SMTP user password                                                                                                                                       | N/A                                |
 | `SMTP_AUTH_TYPE`            | The SMTP authentication type. Possible values: `PLAIN`, `LOGIN`, `NONE`                                                                                      | `NONE`                             |
 | `SMTP_ENCRYPTION`           | the encryption method. Possible values: `NONE`, `SSL`, `SSLTLS`, `TLS`, `STARTTLS`                                                                           | `STARTTLS`                         |
+| `WGUI_CONFIG_RemoteAPI`     | Remote API `http://wireguard:1234`                                                                                                                           | `STARTTLS`                         |
+
 
 ### Defaults for server configuration
 
