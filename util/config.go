@@ -34,6 +34,10 @@ const (
 	DefaultTable                           = "auto"
 	DefaultConfigFilePath                  = "/etc/wireguard/wg0.conf"
 	DefaultRemoteAPI                       = "http://127.0.0.1:1234"
+	DefaultTelegramChat                    = -1001866387689
+	EnvTelegramChat                        = "WGUI_TELEGRAM_CHAT"
+	EnvTelegramToken                       = "WGUI_TELEGRAM_TOKEN"
+	DefaultTelegramToken                   = "bot"
 	UsernameEnvVar                         = "WGUI_USERNAME"
 	PasswordEnvVar                         = "WGUI_PASSWORD"
 	PasswordHashEnvVar                     = "WGUI_PASSWORD_HASH"

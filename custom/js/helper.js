@@ -84,7 +84,7 @@ function renderClientList(data) {
                                 </div>
                                 <hr>
                                 <span class="info-box-text"><i class="fas fa-user"></i> ${obj.Client.name}</span>
-                                <span class="info-box-text" style="color: ${color};"><i class="fas fa-dollar-sign"></i> ${isZeroDate ? text : formattedDate + ' (' + text + ')'}</span>
+                                <span class="info-box-text" style="color: ${color};"><i class="fas fa-ruble-sign" style="color: black"></i> ${isZeroDate ? text : formattedDate + ' (' + text + ')'}</span>
                                 <span class="info-box-text" style="display: none"><i class="fas fa-key"></i> ${obj.Client.public_key}</span>
                                 <span class="info-box-text" style="${obj.Client.telegram ? '' : 'display: none;'}"><i class="fab fa-telegram"></i> ${obj.Client.telegram}</span>
                                 <span class="info-box-text" style="${obj.Client.email ? '' : 'display: none;'}"><i class="fas fa-envelope"></i> ${obj.Client.email}</span>
