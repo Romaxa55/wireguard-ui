@@ -12,6 +12,7 @@ type Client struct {
 	PresharedKey    string    `json:"preshared_key"`
 	Name            string    `json:"name"`
 	Email           string    `json:"email"`
+	Telegram        string    `json:"telegram"`
 	AllocatedIPs    []string  `json:"allocated_ips"`
 	AllowedIPs      []string  `json:"allowed_ips"`
 	ExtraAllowedIPs []string  `json:"extra_allowed_ips"`

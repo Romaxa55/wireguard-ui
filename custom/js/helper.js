@@ -18,6 +18,32 @@ function renderClientList(data) {
             allowedIpsHtml += `<small class="badge badge-secondary">${obj}</small>&nbsp;`;
         })
 
+        // Data info
+        let paymentDate = new Date(obj.Client.client_data_payment);
+        let currentDate = new Date();
+        currentDate.setHours(0, 0, 0, 0); // установить время текущей даты на начало дня
+        let daysDifference = Math.round((paymentDate - currentDate) / (1000 * 60 * 60 * 24));
+        let isOverdue = paymentDate < currentDate;
+        let isZeroDate = paymentDate.getFullYear() === 1; // проверить, является ли дата "нулевой" датой
+        let formattedDate = paymentDate.toLocaleDateString('ru-RU');
+        let color, text;
+        if (isZeroDate) {
+            color = 'red';
+            text = 'Дата не установлена';
+        } else {
+            if (isOverdue) {
+                color = 'red';
+                text = 'просрочено';
+            } else if (daysDifference <= 3) {
+                color = 'orange';
+                text = 'осталось';
+            } else {
+                color = 'green';
+                text = 'осталось';
+            }
+            text += ` ${Math.abs(daysDifference)} дней`;
+        }
+
         // render client html content
         let html = `<div class="col-sm-6 col-md-6 col-lg-4" id="client_${obj.Client.id}">
                         <div class="info-box">
@@ -58,12 +84,10 @@ function renderClientList(data) {
                                 </div>
                                 <hr>
                                 <span class="info-box-text"><i class="fas fa-user"></i> ${obj.Client.name}</span>
+                                <span class="info-box-text" style="color: ${color};"><i class="fas fa-dollar-sign"></i> ${isZeroDate ? text : formattedDate + ' (' + text + ')'}</span>
                                 <span class="info-box-text" style="display: none"><i class="fas fa-key"></i> ${obj.Client.public_key}</span>
-                                <span class="info-box-text"><i class="fas fa-envelope"></i> ${obj.Client.email}</span>
-                                <span class="info-box-text"><i class="fas fa-clock"></i>
-                                    ${prettyDateTime(obj.Client.created_at)}</span>
-                                <span class="info-box-text"><i class="fas fa-history"></i>
-                                    ${prettyDateTime(obj.Client.updated_at)}</span>
+                                <span class="info-box-text" style="${obj.Client.telegram ? '' : 'display: none;'}"><i class="fab fa-telegram"></i> ${obj.Client.telegram}</span>
+                                <span class="info-box-text" style="${obj.Client.email ? '' : 'display: none;'}"><i class="fas fa-envelope"></i> ${obj.Client.email}</span>
                                 <span class="info-box-text"><i class="fas fa-server" style="${obj.Client.use_server_dns ? "opacity: 1.0" : "opacity: 0.5"}"></i>
                                     ${obj.Client.use_server_dns ? 'DNS enabled' : 'DNS disabled'}</span>
                                 <span class="info-box-text"><strong>IP Allocation</strong></span>`

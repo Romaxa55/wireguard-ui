@@ -101,6 +101,10 @@ Wireguard Clients
                         <input type="text" class="form-control" id="_client_name" name="_client_name">
                     </div>
                     <div class="form-group">
+                        <label for="_client_telegram" class="control-label">Telegram</label>
+                        <input type="text" class="form-control" id="_client_telegram" name="client_telegram">
+                    </div>
+                    <div class="form-group">
                         <label for="_client_email" class="control-label">Email</label>
                         <input type="text" class="form-control" id="_client_email" name="client_email">
                     </div>
@@ -445,6 +449,7 @@ Wireguard Clients
                         modal.find("#_client_data_payment").val(new Date(client.client_data_payment).toISOString().split('T')[0]);
                         modal.find("#_client_name").val(client.name);
                         modal.find("#_client_email").val(client.email);
+                        modal.find("#_client_telegram").val(client.telegram);
 
                         modal.find("#_client_allocated_ips").importTags('');
                         client.allocated_ips.forEach(function (obj) {
@@ -532,6 +537,7 @@ Wireguard Clients
             const client_id = $("#_client_id").val();
             const client_data_payment = new Date($("#_client_data_payment").val());
             const name = $("#_client_name").val();
+            const telegram = $("#_client_telegram").val();
             const email = $("#_client_email").val();
             const allocated_ips = $("#_client_allocated_ips").val().split(",");
             const allowed_ips = $("#_client_allowed_ips").val().split(",");
@@ -553,7 +559,7 @@ Wireguard Clients
             }
 
             const data = {"id": client_id, "name": name, "email": email, "allocated_ips": allocated_ips,
-                "allowed_ips": allowed_ips, "extra_allowed_ips": extra_allowed_ips, "use_server_dns": use_server_dns, "enabled": enabled, "client_data_payment": client_data_payment};
+                "allowed_ips": allowed_ips, "extra_allowed_ips": extra_allowed_ips, "use_server_dns": use_server_dns, "enabled": enabled, "client_data_payment": client_data_payment, "telegram": telegram};
 
             $.ajax({
                 cache: false,

@@ -572,6 +572,7 @@ func UpdateClient(db store.IStore) echo.HandlerFunc {
 		client.PaymentDate = _client.PaymentDate /**/
 		client.Name = _client.Name
 		client.Email = _client.Email
+		client.Telegram = _client.Telegram
 		client.Enabled = _client.Enabled
 		client.UseServerDNS = _client.UseServerDNS
 		client.AllocatedIPs = _client.AllocatedIPs
