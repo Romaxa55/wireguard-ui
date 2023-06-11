@@ -27,7 +27,7 @@ var (
 	buildTime  = fmt.Sprintf(time.Now().UTC().Format("01-02-2006 15:04:05"))
 	// configuration variables
 	flagDisableLogin   bool   = false
-	flagBindAddress    string = "0.0.0.0:5000"
+	flagBindAddress    string = "0.0.0.0:5001"
 	flagSmtpHostname   string = "127.0.0.1"
 	flagSmtpPort       int    = 25
 	flagSmtpUsername   string
@@ -181,7 +181,7 @@ func main() {
 	app.POST(util.BasePath+"/wg-server/keypair", handler.WireGuardServerKeyPair(db), handler.ValidSession, handler.ContentTypeJson, handler.NeedsAdmin)
 	app.GET(util.BasePath+"/global-settings", handler.GlobalSettings(db), handler.ValidSession, handler.NeedsAdmin)
 	app.POST(util.BasePath+"/global-settings", handler.GlobalSettingSubmit(db), handler.ValidSession, handler.ContentTypeJson, handler.NeedsAdmin)
-	app.GET(util.BasePath+"/status", handler.Status(db), handler.ValidSession)
+	app.GET(util.BasePath+"/status", handler.Status2(db), handler.ValidSession)
 	app.GET(util.BasePath+"/api/clients", handler.GetClients(db), handler.ValidSession)
 	app.GET(util.BasePath+"/api/client/:id", handler.GetClient(db), handler.ValidSession)
 	app.GET(util.BasePath+"/api/machine-ips", handler.MachineIPAddresses(), handler.ValidSession)

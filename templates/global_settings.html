@@ -73,6 +73,12 @@ Global Settings
                                     name="config_file_path" placeholder="E.g. /etc/wireguard/wg0.conf"
                                     value="{{ .globalSettings.ConfigFilePath }}">
                             </div>
+                            <div class="form-group">
+                                <label for="remote_api">Remote WG API</label>
+                                <input type="text" class="form-control" id="remote_api"
+                                       name="remote_api" placeholder="E.g. http://127.0.0.1:1234"
+                                       value="{{ .globalSettings.RemoteAPI }}">
+                            </div>
                         </div>
                         <!-- /.card-body -->
 
@@ -113,6 +119,8 @@ Global Settings
                             <dt>7. Wireguard Config File Path</dt>
                             <dd>The path of your Wireguard server config file. Please make sure the parent directory
                                 exists and is writable.</dd>
+                            <dt>8. Wireguard remote API url</dt>
+                            <dd>For metrics from remote server <code>http://127.0.0.1:1234</code></dd>
                         </dl>
                     </div>
                 </div>
@@ -160,7 +168,8 @@ Global Settings
             const firewall_mark = $("#firewall_mark").val();
             const table = $("#table").val();
             const config_file_path = $("#config_file_path").val();
-            const data = {"endpoint_address": endpoint_address, "dns_servers": dns_servers, "mtu": mtu, "persistent_keepalive": persistent_keepalive, "firewall_mark": firewall_mark, "table": table, "config_file_path": config_file_path};
+            const remote_api = $("#remote_api").val();
+            const data = {"endpoint_address": endpoint_address, "dns_servers": dns_servers, "mtu": mtu, "persistent_keepalive": persistent_keepalive, "firewall_mark": firewall_mark, "table": table, "config_file_path": config_file_path, "remote_api": remote_api};
 
             $.ajax({
                 cache: false,
@@ -231,6 +240,9 @@ Global Settings
                     config_file_path: {
                         required: true
                     },
+                    remote_api: {
+                        required: false
+                    },
                     firewall_mark: {
                         required: false
                     },
@@ -247,6 +259,9 @@ Global Settings
                         digits: "Persistent keepalive must be an integer"
                     },
                     config_file_path: {
+                        required: "Please enter WireGuard config file path"
+                    },
+                    remote_api: {
                         required: "Please enter WireGuard config file path"
                     }
                 },

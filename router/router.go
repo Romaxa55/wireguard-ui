@@ -22,6 +22,10 @@ type TemplateRegistry struct {
 	extraData map[string]interface{}
 }
 
+func add(x, y int) int {
+	return x + y
+}
+
 // Render e.Renderer interface
 func (t *TemplateRegistry) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
 	tmpl, ok := t.templates[name]
@@ -106,6 +110,7 @@ func New(tmplDir fs.FS, extraData map[string]interface{}, secret []byte) *echo.E
 	// create template list
 	funcs := template.FuncMap{
 		"StringsJoin": strings.Join,
+		"add":         add,
 	}
 	templates := make(map[string]*template.Template)
 	templates["login.html"] = template.Must(template.New("login").Funcs(funcs).Parse(tmplLoginString))

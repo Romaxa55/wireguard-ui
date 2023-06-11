@@ -13,5 +13,6 @@ type GlobalSetting struct {
 	FirewallMark        string    `json:"firewall_mark"`
 	Table               string    `json:"table"`
 	ConfigFilePath      string    `json:"config_file_path"`
+	RemoteAPI           string    `json:"remote_api"`
 	UpdatedAt           time.Time `json:"updated_at"`
 }
