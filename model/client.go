@@ -19,6 +19,7 @@ type Client struct {
 	Enabled         bool      `json:"enabled"`
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
+	PaymentDate     time.Time `json:"client_data_payment"`
 }
 
 // ClientData includes the Client and extra data
@@ -28,7 +29,7 @@ type ClientData struct {
 }
 
 type QRCodeSettings struct {
-	Enabled       bool
-	IncludeDNS    bool
-	IncludeMTU    bool
+	Enabled    bool
+	IncludeDNS bool
+	IncludeMTU bool
 }

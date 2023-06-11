@@ -569,6 +569,7 @@ func UpdateClient(db store.IStore) echo.HandlerFunc {
 		}
 
 		// map new data
+		client.PaymentDate = _client.PaymentDate /**/
 		client.Name = _client.Name
 		client.Email = _client.Email
 		client.Enabled = _client.Enabled
