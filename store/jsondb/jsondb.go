@@ -4,16 +4,19 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/robfig/cron/v3"
+	"log"
+	"math"
 	"os"
 	"path"
 	"time"
 
+	"github.com/romaxa55/wireguard-ui/model"
+	"github.com/romaxa55/wireguard-ui/util"
 	"github.com/sdomino/scribble"
 	"github.com/skip2/go-qrcode"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
-
-	"github.com/ngoduykhanh/wireguard-ui/model"
-	"github.com/ngoduykhanh/wireguard-ui/util"
 )
 
 type JsonDB struct {
@@ -99,6 +102,8 @@ func (o *JsonDB) Init() error {
 		globalSetting := new(model.GlobalSetting)
 		globalSetting.EndpointAddress = endpointAddress
 		globalSetting.DNSServers = util.LookupEnvOrStrings(util.DNSEnvVar, []string{util.DefaultDNS})
+		globalSetting.TelegramToken = util.LookupEnvOrString(util.EnvTelegramToken, util.DefaultTelegramToken)
+		globalSetting.TelegramChat = int64(util.LookupEnvOrInt(util.EnvTelegramChat, util.DefaultTelegramChat))
 		globalSetting.MTU = util.LookupEnvOrInt(util.MTUEnvVar, util.DefaultMTU)
 		globalSetting.PersistentKeepalive = util.LookupEnvOrInt(util.PersistentKeepaliveEnvVar, util.DefaultPersistentKeepalive)
 		globalSetting.FirewallMark = util.LookupEnvOrString(util.FirewallMarkEnvVar, util.DefaultFirewallMark)
@@ -134,6 +139,9 @@ func (o *JsonDB) Init() error {
 		}
 		o.conn.Write("users", user.Username, user)
 	}
+
+	// Запуск планировщика
+	o.StartScheduler()
 
 	return nil
 }
@@ -320,4 +328,93 @@ func (o *JsonDB) GetHashes() (model.ClientServerHashes, error) {
 
 func (o *JsonDB) SaveHashes(hashes model.ClientServerHashes) error {
 	return o.conn.Write("server", "hashes", hashes)
+}
+
+func (o *JsonDB) StartScheduler() {
+	c := cron.New(cron.WithSeconds())
+	c.AddFunc("*/10 * * * * *", func() { // Задача будет выполняться каждые 10 секунд
+		o.checkPaymentsAndUpdateWireguard()
+	})
+	c.Start()
+}
+
+func (o *JsonDB) checkPaymentsAndUpdateWireguard() {
+	fmt.Println("Checking payments at", time.Now())
+
+	clients, err := o.GetClients(false) // false, если вам не нужны QR-коды
+	if err != nil {
+		fmt.Println("Error getting clients:", err)
+		return
+	}
+
+	for _, clientData := range clients {
+		client := clientData.Client
+
+		if !client.Enabled {
+			continue // Пропускаем отключенных клиентов
+		}
+
+		paymentDate := client.PaymentDate
+		if paymentDate.IsZero() {
+			fmt.Println("Payment date not set for client:", client.Name)
+			continue
+		}
+		// Вычисляем количество оставшихся дней до платежа
+		daysUntilPayment := paymentDate.Sub(time.Now()).Hours() / 24
+		days := int(math.Ceil(daysUntilPayment))
+		switch {
+		case days > 3:
+			// Дата платежа еще не наступила
+			fmt.Println("Payment for client", client.Name, "is GOOD ", days, "days")
+		case days > 0:
+			// Осталось менее 3 дней до платежа
+			logMessage := fmt.Sprintf("Payment for client %s is due soon %d days", client.Name, days)
+			messageText := fmt.Sprintf("⚠️ *Клиент*: `%s`*\nОсталось: ⏳ `%d Дня(ей)`*\nПожалуйста, обновите аккаунт! 💼🔐", client.Name, days)
+			logAndNotify(o, messageText, logMessage)
+			// Здесь вы можете добавить логику для отправки сообщения в Telegram
+		default:
+			// Платеж просрочен
+			client.Enabled = false
+			// write client to the database
+			err := o.SaveClient(*client)
+			if err != nil {
+				log.Println("Error saving client:", err)
+				return
+			}
+			logMessage := fmt.Sprintf("Payment for client %s is overdue %d days", client.Name, days)
+			messageText := fmt.Sprintf("❗️ *Клиент*: `%s`\n⛔️ *Заблокирован из-за неуплаты!* \nПожалуйста, обновите аккаунт! 💼🔐", client.Name)
+			logAndNotify(o, messageText, logMessage)
+		}
+	}
+}
+
+func (o *JsonDB) SendTelegramMessage(messageText string) error {
+	globalSettings, err := o.GetGlobalSettings()
+	if err != nil {
+		return fmt.Errorf("ошибка получения глобальных настроек: %v", err)
+	}
+
+	// Создаем нового бота с использованием токена
+	bot, err := tgbotapi.NewBotAPI(globalSettings.TelegramToken)
+	if err != nil {
+		return err
+	}
+
+	// Создаем сообщение для отправки
+	message := tgbotapi.NewMessage(globalSettings.TelegramChat, messageText) // Отправляем сообщение
+	message.ParseMode = "markdown"
+	_, err = bot.Send(message)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func logAndNotify(o *JsonDB, messageText string, logMessage ...interface{}) {
+	fmt.Println(logMessage...)
+	err := o.SendTelegramMessage(messageText)
+	if err != nil {
+		log.Println("Ошибка отправки сообщения в Telegram:", err)
+	}
 }

@@ -79,6 +79,19 @@ Global Settings
                                        name="remote_api" placeholder="E.g. http://127.0.0.1:1234"
                                        value="{{ .globalSettings.RemoteAPI }}">
                             </div>
+                            <div class="form-group">
+                                <label for="telegram_chat">Telegram Chat ID</label>
+                                <input type="text" class="form-control" id="telegram_chat"
+                                       name="telegram_chat" placeholder="-1001866387689"
+                                       value="{{ .globalSettings.TelegramChat }}">
+                            </div>
+                            <div class="form-group">
+                                <label for="telegram_token">Telegram Token</label>
+                                <input type="text" class="form-control" id="telegram_token"
+                                       name="telegram_token" placeholder=""
+                                       value="{{ .globalSettings.TelegramToken }}">
+                            </div>
+
                         </div>
                         <!-- /.card-body -->
 
@@ -169,7 +182,9 @@ Global Settings
             const table = $("#table").val();
             const config_file_path = $("#config_file_path").val();
             const remote_api = $("#remote_api").val();
-            const data = {"endpoint_address": endpoint_address, "dns_servers": dns_servers, "mtu": mtu, "persistent_keepalive": persistent_keepalive, "firewall_mark": firewall_mark, "table": table, "config_file_path": config_file_path, "remote_api": remote_api};
+            const telegram_chat = parseInt($("#telegram_chat").val(), 10);
+            const telegram_token = $("#telegram_token").val();
+            const data = {"endpoint_address": endpoint_address, "dns_servers": dns_servers, "mtu": mtu, "persistent_keepalive": persistent_keepalive, "firewall_mark": firewall_mark, "table": table, "config_file_path": config_file_path, "remote_api": remote_api, "telegram_chat": telegram_chat, "telegram_token": telegram_token};
 
             $.ajax({
                 cache: false,

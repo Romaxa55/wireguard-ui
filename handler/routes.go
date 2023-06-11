@@ -21,10 +21,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ngoduykhanh/wireguard-ui/emailer"
-	"github.com/ngoduykhanh/wireguard-ui/model"
-	"github.com/ngoduykhanh/wireguard-ui/store"
-	"github.com/ngoduykhanh/wireguard-ui/util"
+	"github.com/romaxa55/wireguard-ui/emailer"
+	"github.com/romaxa55/wireguard-ui/model"
+	"github.com/romaxa55/wireguard-ui/store"
+	"github.com/romaxa55/wireguard-ui/util"
 )
 
 // Health check handler
@@ -569,8 +569,10 @@ func UpdateClient(db store.IStore) echo.HandlerFunc {
 		}
 
 		// map new data
+		client.PaymentDate = _client.PaymentDate /**/
 		client.Name = _client.Name
 		client.Email = _client.Email
+		client.Telegram = _client.Telegram
 		client.Enabled = _client.Enabled
 		client.UseServerDNS = _client.UseServerDNS
 		client.AllocatedIPs = _client.AllocatedIPs

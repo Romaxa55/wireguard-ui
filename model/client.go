@@ -12,6 +12,7 @@ type Client struct {
 	PresharedKey    string    `json:"preshared_key"`
 	Name            string    `json:"name"`
 	Email           string    `json:"email"`
+	Telegram        string    `json:"telegram"`
 	AllocatedIPs    []string  `json:"allocated_ips"`
 	AllowedIPs      []string  `json:"allowed_ips"`
 	ExtraAllowedIPs []string  `json:"extra_allowed_ips"`
@@ -19,6 +20,7 @@ type Client struct {
 	Enabled         bool      `json:"enabled"`
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
+	PaymentDate     time.Time `json:"client_data_payment"`
 }
 
 // ClientData includes the Client and extra data
@@ -28,7 +30,7 @@ type ClientData struct {
 }
 
 type QRCodeSettings struct {
-	Enabled       bool
-	IncludeDNS    bool
-	IncludeMTU    bool
+	Enabled    bool
+	IncludeDNS bool
+	IncludeMTU bool
 }

@@ -15,4 +15,6 @@ type GlobalSetting struct {
 	ConfigFilePath      string    `json:"config_file_path"`
 	RemoteAPI           string    `json:"remote_api"`
 	UpdatedAt           time.Time `json:"updated_at"`
+	TelegramChat        int64     `json:"telegram_chat"`
+	TelegramToken       string    `json:"telegram_token"`
 }
