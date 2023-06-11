@@ -1,6 +1,7 @@
 package jsondb
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -413,10 +414,20 @@ func (o *JsonDB) checkPaymentsAndUpdateWireguard() {
 
 func (o *JsonDB) SendTelegramMessage(messageText string) error {
 	var (
+		ipv4only = &net.Resolver{
+			PreferGo: true,
+			Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+				d := net.Dialer{
+					Timeout: time.Millisecond * 8000,
+				}
+				return d.DialContext(ctx, "udp4", "8.8.8.8:53")
+			},
+		}
+
 		dialer = &net.Dialer{
 			Timeout:   30 * time.Second,
 			KeepAlive: 30 * time.Second,
-			DualStack: false,
+			Resolver:  ipv4only,
 		}
 
 		transport = &http.Transport{
