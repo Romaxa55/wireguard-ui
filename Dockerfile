@@ -72,5 +72,5 @@ COPY --from=builder --chown=wgui:wgui /build/wg-ui .
 RUN chmod +x wg-ui
 COPY init.sh .
 
-EXPOSE 5000/tcp
+EXPOSE 5001/tcp
 ENTRYPOINT ["./init.sh"]
