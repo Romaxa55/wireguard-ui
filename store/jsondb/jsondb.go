@@ -8,6 +8,8 @@ import (
 	"github.com/robfig/cron/v3"
 	"log"
 	"math"
+	"net"
+	"net/http"
 	"os"
 	"path"
 	"time"
@@ -410,13 +412,31 @@ func (o *JsonDB) checkPaymentsAndUpdateWireguard() {
 }
 
 func (o *JsonDB) SendTelegramMessage(messageText string) error {
+	var (
+		dialer = &net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+			DualStack: false,
+		}
+
+		transport = &http.Transport{
+			Proxy:             http.ProxyFromEnvironment,
+			DialContext:       dialer.DialContext,
+			ForceAttemptHTTP2: false,
+		}
+
+		client = &http.Client{
+			Transport: transport,
+		}
+	)
+
 	globalSettings, err := o.GetGlobalSettings()
 	if err != nil {
 		return fmt.Errorf("ошибка получения глобальных настроек: %v", err)
 	}
 
 	// Создаем нового бота с использованием токена
-	bot, err := tgbotapi.NewBotAPI(globalSettings.TelegramToken)
+	bot, err := tgbotapi.NewBotAPIWithClient(globalSettings.TelegramToken, tgbotapi.APIEndpoint, client)
 	if err != nil {
 		return err
 	}
