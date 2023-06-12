@@ -36,6 +36,9 @@ var (
 	flagSmtpNoTLSCheck bool   = false
 	flagSmtpEncryption string = "STARTTLS"
 	flagSendgridApiKey string
+	flagMailgunApiKey  string
+	flagMailgunDomain  string
+	flagAPIBase        string = "https://api.mailgun.net/v3"
 	flagEmailFrom      string
 	flagEmailFromName  string = "WireGuard UI"
 	flagSessionSecret  string
@@ -75,6 +78,9 @@ func init() {
 	flag.StringVar(&flagSmtpEncryption, "smtp-encryption", util.LookupEnvOrString("SMTP_ENCRYPTION", flagSmtpEncryption), "SMTP Encryption : NONE, SSL, SSLTLS, TLS or STARTTLS (by default)")
 	flag.StringVar(&flagSmtpAuthType, "smtp-auth-type", util.LookupEnvOrString("SMTP_AUTH_TYPE", flagSmtpAuthType), "SMTP Auth Type : PLAIN, LOGIN or NONE.")
 	flag.StringVar(&flagSendgridApiKey, "sendgrid-api-key", util.LookupEnvOrString("SENDGRID_API_KEY", flagSendgridApiKey), "Your sendgrid api key.")
+	flag.StringVar(&flagMailgunApiKey, "mailgun-api-key", util.LookupEnvOrString("MAILGUN_API_KEY", flagMailgunApiKey), "Your mailgun api key.")
+	flag.StringVar(&flagMailgunDomain, "mailgun-domain", util.LookupEnvOrString("MAILGUN_DOMAIN", flagMailgunDomain), "Your mailgun api key.")
+	flag.StringVar(&flagAPIBase, "mailgun-base_api", util.LookupEnvOrString("MAILGUN_API_BASE", flagAPIBase), "Your mailgun base url.")
 	flag.StringVar(&flagEmailFrom, "email-from", util.LookupEnvOrString("EMAIL_FROM_ADDRESS", flagEmailFrom), "'From' email address.")
 	flag.StringVar(&flagEmailFromName, "email-from-name", util.LookupEnvOrString("EMAIL_FROM_NAME", flagEmailFromName), "'From' email name.")
 	flag.StringVar(&flagSessionSecret, "session-secret", util.LookupEnvOrString("SESSION_SECRET", flagSessionSecret), "The key used to encrypt session cookies.")
@@ -93,6 +99,9 @@ func init() {
 	util.SmtpNoTLSCheck = flagSmtpNoTLSCheck
 	util.SmtpEncryption = flagSmtpEncryption
 	util.SendgridApiKey = flagSendgridApiKey
+	util.MailgunApiKey = flagMailgunApiKey
+	util.MailgunDomain = flagMailgunDomain
+	util.MailgunAPIBase = flagAPIBase
 	util.EmailFrom = flagEmailFrom
 	util.EmailFromName = flagEmailFromName
 	util.SessionSecret = []byte(flagSessionSecret)
@@ -158,10 +167,11 @@ func main() {
 		app.GET(util.BasePath+"/getusers", handler.GetUsers(db), handler.ValidSession, handler.NeedsAdmin)
 		app.GET(util.BasePath+"/api/user/:username", handler.GetUser(db), handler.ValidSession)
 	}
-
 	var sendmail emailer.Emailer
 	if util.SendgridApiKey != "" {
 		sendmail = emailer.NewSendgridApiMail(util.SendgridApiKey, util.EmailFromName, util.EmailFrom)
+	} else if util.MailgunApiKey != "" {
+		sendmail = emailer.NewMailgunApiMail(util.MailgunDomain, util.MailgunApiKey, util.EmailFromName, util.EmailFrom, util.MailgunAPIBase)
 	} else {
 		sendmail = emailer.NewSmtpMail(util.SmtpHostname, util.SmtpPort, util.SmtpUsername, util.SmtpPassword, util.SmtpNoTLSCheck, util.SmtpAuthType, util.EmailFromName, util.EmailFrom, util.SmtpEncryption)
 	}

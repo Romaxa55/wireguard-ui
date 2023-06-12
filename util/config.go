@@ -14,6 +14,9 @@ var (
 	SmtpEncryption string
 	SmtpAuthType   string
 	SendgridApiKey string
+	MailgunApiKey  string
+	MailgunDomain  string
+	MailgunAPIBase string
 	EmailFrom      string
 	EmailFromName  string
 	SessionSecret  []byte
